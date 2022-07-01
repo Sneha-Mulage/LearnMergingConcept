@@ -1,0 +1,540 @@
+import com.atlassian.crowd.embedded.api.User
+import com.atlassian.jira.bc.issue.search.SearchService
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.Issue
+import com.atlassian.jira.issue.IssueManager
+import com.atlassian.jira.issue.comments.CommentManager
+
+import com.atlassian.jira.user.util.UserUtil
+
+import com.atlassian.crowd.embedded.api.User
+
+import com.atlassian.jira.web.bean.PagerFilter
+
+//import com.atlassian.jira.ComponentManager
+
+import com.atlassian.jira.project.ProjectManager
+
+import com.atlassian.jira.issue.IssueManager
+
+import com.atlassian.jira.issue.index.IndexException
+
+//import com.atlassian.jira.ManagerFactory
+
+import com.atlassian.jira.user.ApplicationUser
+
+import org.apache.log4j.Category
+
+import com.atlassian.jira.issue.MutableIssue
+
+import com.atlassian.jira.issue.link.IssueLink;
+
+
+
+def issueLinkManager = ComponentAccessor.getIssueLinkManager()
+
+
+
+def issueManager = ComponentAccessor.getIssueManager();
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager();
+
+//def issue = issueManager.getIssueObject("DIEO-5221");
+
+def issueKey = issue.key; //get issue key
+
+//log.warn (issueKey);
+
+ 
+
+def c1 = "", p1 = "";
+
+def relation_link = "Deployment"
+
+def parent_issue_status = "FAT Signed-off"
+
+def parent_issue_type = "Story"
+
+def c2_suffic= "DEPLOY TO ACC "
+
+def c1_suffic= "DEPLOY TO TST "
+
+def c1_issue_status = "INSTALLED"
+
+def c1_issue_type = "Deployment to Uncontrolled Environment"
+
+def cField1 = customFieldManager.getCustomFieldObject("customfield_13710");
+
+def cField2 = customFieldManager.getCustomFieldObject("customfield_13711");
+def deployedApp = customFieldManager.getCustomFieldObject("customfield_14900");
+
+
+def C1EnvObj = customFieldManager.getCustomFieldObject("customfield_13709");
+
+def result = true
+
+def issue_summary = issue.summary
+
+//log.warn "issue summary is : " + issue_summary
+//def tst;
+String[] tst=["a","b"];
+int i=0;
+
+List allOutIssueLink = issueLinkManager.getInwardLinks(issue.id);
+
+for (Iterator outIterator = allOutIssueLink.iterator(); outIterator.hasNext();i++) {
+
+IssueLink issueLink = (IssueLink) outIterator.next();
+
+def linkedIssue = issueLink.getSourceObject();
+
+if ( issueLink.issueLinkType.name.contains(relation_link)) {
+
+//log.warn(issueLink.issueLinkType.name)
+ 
+      tst[i]=  linkedIssue;
+       // log.warn ("c1"+tst[i]);
+}
+    
+}
+
+//log.warn ("c1"+c1);
+
+
+
+allOutIssueLink = issueLinkManager.getOutwardLinks(issue.id);
+
+for (Iterator outIterator = allOutIssueLink.iterator(); outIterator.hasNext();) {
+
+IssueLink issueLink = (IssueLink) outIterator.next();
+
+def linkedIssue = issueLink.getDestinationObject();
+
+if ( issueLink.issueLinkType.name.contains(relation_link)) {
+
+//log.warn(issueLink.issueLinkType.name)
+
+    p1 = linkedIssue;
+
+//}
+
+}}
+
+log.warn ("p1"+p1)
+
+
+
+def tst1 = issueManager.getIssueObject(tst[0]);
+def tst2 = issueManager.getIssueObject(tst[1]);
+//log.warn (tst1.getCustomFieldValue(C1EnvObj).toString())
+//log.warn (tst2.getCustomFieldValue(C1EnvObj).toString())
+
+if (tst1.getCustomFieldValue(C1EnvObj).toString() == "TST2" && tst2 == null)
+{
+    log.warn("Only TST2")
+    
+    def C1Env = tst1.getCustomFieldValue(C1EnvObj).toString()
+def C2Env = issue.getCustomFieldValue(C1EnvObj).toString()
+
+
+
+//log.warn ("p1"+p1)
+def C1deployedApp = tst1.getCustomFieldValue(deployedApp).toString()
+def C2deployedApp = issue.getCustomFieldValue(deployedApp).toString()
+
+
+
+if((issue.getSummary() == p1.getSummary()+" - "+"DEPLOY TO "+C2Env+" ") && (p1.getIssueType().getName() == parent_issue_type) && (p1.getStatus().getName() == parent_issue_status) && (C1deployedApp == C2deployedApp))
+
+{
+    //log.warn("pgood")
+if((tst1.getSummary() == p1.getSummary()+" - "+"DEPLOY TO "+C1Env+" ") && (tst1.getIssueType().getName() == c1_issue_type) && (tst1.getStatus().getName() == c1_issue_status))
+
+{
+
+def cFieldValue1 = tst1.getCustomFieldValue(cField1) as Date // get custom field values
+
+def cFieldValue2 = tst1.getCustomFieldValue(cField2).toString()
+
+def today = new Date()
+    
+            if (cFieldValue1 != null) 
+
+                {
+
+                    if (cFieldValue1.before(today) && cFieldValue2 != "null")
+
+            {
+
+                               result = true
+
+            }else
+
+            {
+
+                result = false
+
+            }
+
+                }
+
+    else
+
+            {
+
+                result = false
+
+            }
+
+    }
+
+    else
+
+        {
+
+        
+
+          result = false  
+
+              
+
+    }
+
+	}
+
+	else { 
+ //log.warn("pbad")
+          result = false  
+
+         }
+//log.warn(result)
+   return result
+}
+
+if (tst1.getCustomFieldValue(C1EnvObj).toString() == "TST" && tst2 == null)
+{
+    log.warn("Only TST1")
+    
+    def C1Env = tst1.getCustomFieldValue(C1EnvObj).toString()
+def C2Env = issue.getCustomFieldValue(C1EnvObj).toString()
+
+
+
+//log.warn ("p1"+p1)
+def C1deployedApp = tst1.getCustomFieldValue(deployedApp).toString()
+def C2deployedApp = issue.getCustomFieldValue(deployedApp).toString()
+
+
+
+if((issue.getSummary() == p1.getSummary()+" - "+"DEPLOY TO "+C2Env+" ") && (p1.getIssueType().getName() == parent_issue_type) && (p1.getStatus().getName() == parent_issue_status) && (C1deployedApp == C2deployedApp))
+
+{
+    //log.warn("pgood")
+if((tst1.getSummary() == p1.getSummary()+" - "+"DEPLOY TO "+C1Env+" ") && (tst1.getIssueType().getName() == c1_issue_type) && (tst1.getStatus().getName() == c1_issue_status))
+
+{
+
+def cFieldValue1 = tst1.getCustomFieldValue(cField1) as Date // get custom field values
+
+def cFieldValue2 = tst1.getCustomFieldValue(cField2).toString()
+
+def today = new Date()
+    
+            if (cFieldValue1 != null) 
+
+                {
+
+                    if (cFieldValue1.before(today) && cFieldValue2 != "null")
+
+            {
+
+                               result = true
+
+            }else
+
+            {
+
+                result = false
+
+            }
+
+                }
+
+    else
+
+            {
+
+                result = false
+
+            }
+
+    }
+
+    else
+
+        {
+
+        
+
+          result = false  
+
+              
+
+    }
+
+	}
+
+	else { 
+ //log.warn("pbad")
+          result = false  
+
+         }
+//log.warn(result)
+   return result
+}
+
+log.warn("tst1=" + tst1)
+log.warn("tst2=" + tst2)
+
+if (tst1.getCustomFieldValue(C1EnvObj).toString() == "TST2" && tst2.getCustomFieldValue(C1EnvObj).toString() == "TST")
+   {
+
+    log.warn("TST2 is t1")
+    
+    def C1Env = tst2.getCustomFieldValue(C1EnvObj).toString()
+def C2Env = issue.getCustomFieldValue(C1EnvObj).toString()
+//log.warn ("p1"+p1)
+def C1deployedApp = tst2.getCustomFieldValue(deployedApp).toString()
+def C2deployedApp = issue.getCustomFieldValue(deployedApp).toString()
+if((issue.getSummary() == p1.getSummary()+" - "+"DEPLOY TO "+C2Env+" ") && (p1.getIssueType().getName() == parent_issue_type) && (p1.getStatus().getName() == parent_issue_status) && (C1deployedApp == C2deployedApp))
+
+{
+    //log.warn("pgood")
+
+    if((tst1.getSummary() == p1.getSummary()+" - "+"DEPLOY TO "+"TST2 "+" ") && (tst1.getIssueType().getName() == c1_issue_type) )
+
+{
+
+def cFieldValue1 = tst2.getCustomFieldValue(cField1) as Date // get custom field values
+
+def cFieldValue2 = tst2.getCustomFieldValue(cField2).toString()
+
+def today = new Date()
+    
+            if (cFieldValue1 != null) 
+
+                {
+
+                    if (cFieldValue1.before(today) && cFieldValue2 != "null")
+
+            {
+                
+    if((tst2.getSummary() == p1.getSummary()+" - "+"DEPLOY TO "+C1Env+" ") && (tst2.getIssueType().getName() == c1_issue_type) && (tst2.getStatus().getName() == c1_issue_status))
+
+{
+
+ cFieldValue1 = tst2.getCustomFieldValue(cField1) as Date // get custom field values
+
+ cFieldValue2 = tst2.getCustomFieldValue(cField2).toString()
+
+ today = new Date()
+    
+            if (cFieldValue1 != null) 
+
+                {
+
+                    if (cFieldValue1.before(today) && cFieldValue2 != "null")
+
+            {
+
+                               result = true
+
+            }else
+
+            {
+
+                result = false
+
+            }
+
+                }
+
+    else
+
+            {
+
+                result = false
+
+            }
+
+    }
+            }
+    else
+
+        {
+
+        
+
+          result = false  
+
+              
+
+    }
+
+	}
+
+	else { 
+ //log.warn("pbad")
+          result = false  
+
+         }
+//log.warn(result)
+   
+}
+    else { 
+ //log.warn("pbad")
+          result = false  
+
+         }
+}
+       else { 
+ //log.warn("pbad")
+          result = false  
+
+         }
+
+return result
+   }
+
+log.warn("2-"+tst2.getCustomFieldValue(C1EnvObj).toString())
+log.warn("1-"+tst1.getCustomFieldValue(C1EnvObj).toString())
+
+if (tst2.getCustomFieldValue(C1EnvObj).toString() == "TST2" && tst1.getCustomFieldValue(C1EnvObj).toString() == "TST")
+   {
+
+    log.warn("TST2 is t2")
+    
+    def C1Env = tst2.getCustomFieldValue(C1EnvObj).toString()
+def C2Env = issue.getCustomFieldValue(C1EnvObj).toString()
+//log.warn ("p1"+p1)
+def C1deployedApp = tst2.getCustomFieldValue(deployedApp).toString()
+def C2deployedApp = issue.getCustomFieldValue(deployedApp).toString()
+if((issue.getSummary() == p1.getSummary()+" - "+"DEPLOY TO "+C2Env+" ") && (p1.getIssueType().getName() == parent_issue_type) && (p1.getStatus().getName() == parent_issue_status) && (C1deployedApp == C2deployedApp))
+
+{
+    //log.warn(tst2.getIssueType().getName() +"=" +c1_issue_type)
+
+    if((tst2.getSummary() == p1.getSummary()+" - "+"DEPLOY TO "+"TST2 ") && (tst2.getIssueType().getName() == c1_issue_type) )
+
+{
+     log.warn("tst2good")
+
+def cFieldValue1 = tst2.getCustomFieldValue(cField1) as Date // get custom field values
+
+def cFieldValue2 = tst2.getCustomFieldValue(cField2).toString()
+   // log.warn(cFieldValue1)
+     //log.warn(cFieldValue2)
+def today = new Date()
+    
+            if (cFieldValue1 != null) 
+
+                {
+
+                    if (cFieldValue1.before(today) && cFieldValue2 != "null")
+
+            {
+                log.warn(tst1.getSummary() +"=="+ p1.getSummary()+" - "+"DEPLOY TO "+C1Env+" ")
+    if((tst1.getSummary() == p1.getSummary()+" - "+"DEPLOY TO "+"TST"+" ") && (tst1.getIssueType().getName() == c1_issue_type) && (tst1.getStatus().getName() == c1_issue_status))
+
+{
+ log.warn("check tst1 inside")
+ cFieldValue1 = tst1.getCustomFieldValue(cField1) as Date // get custom field values
+log.warn(cFieldValue1)
+ cFieldValue2 = tst1.getCustomFieldValue(cField2).toString()
+log.warn(cFieldValue2)
+ today = new Date()
+    
+            if (cFieldValue1 != null) 
+
+                {
+
+                    if (cFieldValue1.before(today) && cFieldValue2 != "null")
+
+            {
+
+                               result = true
+
+            }else
+
+            {
+
+                result = false
+
+            }
+
+                }
+
+    else
+
+            {
+
+                result = false
+
+            }
+
+    }
+                 else
+
+        {
+
+        
+
+          result = false  
+
+              
+
+    }
+            }
+    else
+
+        {
+
+        
+
+          result = false  
+
+              
+
+    }
+
+	}
+
+	else { 
+ //log.warn("pbad")
+          result = false  
+
+         }
+//log.warn(result)
+   
+}
+    else { 
+ //log.warn("pbad")
+          result = false  
+
+         }
+}
+       else { 
+ //log.warn("pbad")
+          result = false  
+
+         }
+
+return result
+   }
+else { 
+ log.warn("pbad")
+          result = false  
+return result
+         }
+
+
