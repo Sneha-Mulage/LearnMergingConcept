@@ -1,0 +1,247 @@
+//Created for Jira SCM Automation by Sneha Mulage from Jenkins Team
+import com.atlassian.crowd.embedded.api.User
+import com.atlassian.jira.bc.issue.search.SearchService
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.Issue
+import com.atlassian.jira.issue.IssueManager
+import com.atlassian.jira.issue.comments.CommentManager
+import com.atlassian.jira.issue.MutableIssue
+import com.atlassian.jira.user.util.UserUtil
+import com.atlassian.jira.event.type.EventDispatchOption
+import com.atlassian.crowd.embedded.api.User
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.customfields.manager.OptionsManager
+import com.atlassian.jira.web.bean.PagerFilter
+
+import com.atlassian.jira.event.type.EventDispatchOption
+//import com.atlassian.jira.ComponentManager
+
+import com.atlassian.jira.project.ProjectManager
+
+import com.atlassian.jira.issue.IssueManager
+
+import com.atlassian.jira.issue.index.IndexException
+
+//import com.atlassian.jira.ManagerFactory
+
+import com.atlassian.jira.user.ApplicationUser
+
+import org.apache.log4j.Category
+
+import com.atlassian.jira.issue.link.IssueLink;
+
+
+
+def issueLinkManager = ComponentAccessor.getIssueLinkManager()
+
+def cfSelect = ComponentAccessor.customFieldManager.getCustomFieldObject("customfield_13709")
+
+def issueManager = ComponentAccessor.getIssueManager();
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager();
+
+//def issue = issueManager.getIssueObject("DIEO-5221");
+
+def issueKey = issue.key; //get issue key
+
+//log.warn (issueKey);
+
+ 
+
+def c1 = "", p1 = "";
+
+def relation_link = "Deployment"
+
+def parent_issue_status = "FAT Signed-off"
+
+def parent_issue_type = "Story"
+def parent_issue_type_defect = "Defect"
+def parent_issue_type_epic = "Epic"
+def c2_suffic= "DEPLOY TO ACC "
+
+def c1_suffic= "DEPLOY TO TST "
+
+def c1_issue_status = "INSTALLED"
+
+def c1_issue_type = "Deployment to Uncontrolled Environment"
+
+
+def deployedApp = customFieldManager.getCustomFieldObject("customfield_14900"); //Deployment Application
+def cField1 = customFieldManager.getCustomFieldObject("customfield_13710");//Installtion Date &Time
+def cField2 = customFieldManager.getCustomFieldObject("customfield_13711");//Installation Duration
+def deployedCheckBox = customFieldManager.getCustomFieldObject("customfield_14404");//Deployment Checkbox
+def C1EnvObj = customFieldManager.getCustomFieldObject("customfield_13709");//Deployment Env
+def fatSignOff = customFieldManager.getCustomFieldObject("customfield_14401");//Sign-off Checkbox
+
+
+def result = true 
+
+def issue_summary = issue.summary
+
+def destId
+
+//Parento to Child-Inward link 
+//Child to Parent-Outward link 
+allOutIssueLink = issueLinkManager.getOutwardLinks(issue.id);
+// fetches all the links which child issues has 
+for (Iterator outIterator = allOutIssueLink.iterator(); outIterator.hasNext();) {
+
+IssueLink issueLink = (IssueLink) outIterator.next();
+
+def linkedIssue = issueLink.getDestinationObject();
+    log.warn("PARENT ISSUE "+issueLink.getDestinationObject())//Parent Issue
+
+// checks if the relation link is deployed or not, as we dont want the parent issue should check the causes realtion link  which holds security issues.
+if ( issueLink.issueLinkType.name.contains(relation_link)) {
+ p1 = linkedIssue; // parent issue
+    log.warn("Parent Issue "+p1)  
+     destId=issueLink.getDestinationId()//parent issue id
+    log.warn("Parent Issue ID"+destId)
+}
+}
+
+
+int i=0;
+//this array list will fetch all the linked child issue (i.e deployment relation link type )from parent issue
+ ArrayList<String> list = new ArrayList<String>();
+List allOutIssueLink = issueLinkManager.getInwardLinks(destId);
+log.warn("LINKED ISSUES OF PARENT"+allOutIssueLink);
+log.warn("NO OF or TOTAL LINKED ISSUES OF PARENT"+allOutIssueLink.size())
+//iterates through all the linked issues of parent
+for (Iterator outIterator = allOutIssueLink.iterator(); outIterator.hasNext();i++) {
+
+IssueLink issueLink = (IssueLink) outIterator.next();
+
+def linkedIssue = issueLink.getSourceObject();//fetches linked child issues of parent issue
+log.warn("CHILD ISSUE ID " + linkedIssue);
+    
+if ( issueLink.issueLinkType.name.contains(relation_link)) {
+
+log.warn(issueLink.issueLinkType.name)
+ log.warn("LINKED ISSUE TYPE NAME" + linkedIssue); 
+     // all the child issues will be stored in the array list 
+    list.add(linkedIssue)
+  log.warn ("CHILD ISSUE "+ list.get(i))
+}
+    
+}
+
+log.warn("LIST SIZE"+list.size())
+def j
+// the above array list which has all the linked child issues will be iteration to validate the fields as per our project requirement
+for (j=0; j<list.size();j++){
+
+def tst2 = issueManager.getIssueObject(list.get(j).toString());// this will fetch the linked child issues from the array list which is passed as parametr to the getIssueObject() method 
+log.warn("CHILD ISSUE TYPE"+tst2.getIssueType().getName()) //print the child issue type 
+    log.warn ("CHILD ISSUE DEPLOYMENT ENV NAME "+tst2.getCustomFieldValue(C1EnvObj).toString()) //print the child deployement env value i.e TST or ACC
+    
+    // checks whether the env is TST or not, if the env is other  TST,DEV or TST2 then transition ends up with error
+    if (tst2.getCustomFieldValue(C1EnvObj).toString() == "ACC" && tst2.getIssueType().getName() == c1_issue_type || tst2.getCustomFieldValue(C1EnvObj).toString() == "SUP" || tst2.getCustomFieldValue(C1EnvObj).toString() == "PROD" ){
+        return false
+    }
+
+    def customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectByName("Sign-off Checkbox")
+def selectedValues = customField.getValue(p1)*.value// Sign off checkbox of parent issue 
+log.warn("SIGNED OFF CHECKBOX PARENT ISSUE VALUE "+ selectedValues)
+
+//checks the deployment env name and allows tansition only for TST,TST2 or DEV env
+  if (tst2.getCustomFieldValue(C1EnvObj).toString() == "TST" || tst2.getCustomFieldValue(C1EnvObj).toString() == "TST2" || tst2.getCustomFieldValue(C1EnvObj).toString() == "DEV")
+{ IssueManager im = ComponentAccessor.getIssueManager(); 
+
+ MutableIssue issue = im.getIssueObject(list.get(j).toString()) as MutableIssue;
+ log.warn("ISSUE"+issue.getCustomFieldValue(cfSelect).toString())
+issue.setSummary(p1.getSummary() +' - DEPLOY TO '+issue.getCustomFieldValue(cfSelect).toString()); 
+def user = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+ComponentAccessor.getIssueManager().updateIssue(user, issue, EventDispatchOption.ISSUE_UPDATED, false)
+
+   def C1Env = tst2.getCustomFieldValue(C1EnvObj).toString()// deployemnt env custom field value of child issue  is stored in varaiable C1Env
+    log.warn("C1Env"+tst2.getCustomFieldValue(C1EnvObj).toString())
+def C2Env = p1.getCustomFieldValue(C1EnvObj).toString() // deployemnt env custom field value of parent issue is stored in varaiable C2Env
+
+def C1deployedApp = tst2.getCustomFieldValue(deployedApp).toString()// deployemnt application name custom field value of child issue  is stored
+def C2deployedApp = p1.getCustomFieldValue(deployedApp).toString() // deployemnt application name custom field value of parent issue  is stored 
+def deployCheckbox= tst2.getCustomFieldValue(deployedCheckBox).toString() // deployemnt checkbox custom field value of child issue  is stored
+  log.warn("Child Deployment App"+tst2.getCustomFieldValue(deployedApp).toString())
+log.warn("Parent Deployment App"+p1.getCustomFieldValue(deployedApp).toString())
+ log.warn("Child DEPLOYED CHECKBOX" +deployCheckbox.toString() )
+ log.warn("Checks if deployeed checkbox status is equal to  installed "+deployCheckbox == c1_issue_status)
+
+log.warn(issue.getSummary() == p1.getSummary()+" - "+"DEPLOY TO "+C1Env+" ")
+log.warn("Parent Issue Type"+p1.getIssueType().getName())
+log.warn("Parent Status"+p1.getStatus().getName())  
+
+ //checks parent issue tyep i.e Story,Epic or Defect and parent issue status ,and deployment application of child and parent issues, and signed-off checkbox of parent issue
+if((p1.getIssueType().getName() == parent_issue_type) || (p1.getIssueType().getName() == parent_issue_type_defect) || (p1.getIssueType().getName() == parent_issue_type_epic) && (p1.getStatus().getName() == parent_issue_status) && (C1deployedApp == C2deployedApp) && (customField.getValue(p1)*.value.contains("FAT Signed-Off")) )
+
+{
+    log.warn("pgood")
+log.warn("CHILD ISSUETYPE"+tst2.getIssueType().getName())
+    log.warn("CHILD Status"+tst2.getStatus().getName())
+    //checks child issue type is set to  Depoyment to Uncontrolled env or not ,  and checks the deployment checkbox of child issue is Installed or not
+    if((tst2.getIssueType().getName() == c1_issue_type) && (deployCheckbox == "[INSTALLED]"))
+{log.warn("pvgood")
+
+def cFieldValue1 = tst2.getCustomFieldValue(cField1) as Date // get Installation date and time value
+log.warn("Installation date and time value"+cFieldValue1)
+def cFieldValue2 = tst2.getCustomFieldValue(cField2).toString()//get Installation Duration
+log.warn("Installation Duration"+cFieldValue2)
+def today = new Date()
+    
+            if (cFieldValue1 != null) 
+
+                {
+//checks the installtion date and time is set to todays date or previous days and checks installation duration is not set to null
+                    if (cFieldValue1.before(today) && cFieldValue2 != "null")
+
+            {
+
+                               result = true
+
+            }else
+
+            {
+
+                result = false
+
+            }
+
+                }
+
+    else
+
+            {
+
+                result = false
+
+            }
+
+    }
+
+    else
+
+        {
+
+        
+
+          result = false  
+
+              
+
+    }
+
+	}
+
+	else { 
+
+          result = false  
+
+         }
+log.warn("RESULT"+result)
+
+}
+
+
+log.warn("CHILD ISSUE=" + tst2)
+
+}
+return result
