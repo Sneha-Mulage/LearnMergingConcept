@@ -1,0 +1,342 @@
+
+
+//Created for Jira SCM Automation by Sneha Mulage from Jenkins Team
+import com.atlassian.crowd.embedded.api.User
+import com.atlassian.jira.bc.issue.search.SearchService
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.Issue
+import com.atlassian.jira.issue.IssueManager
+import com.atlassian.jira.issue.comments.CommentManager
+import com.atlassian.jira.issue.MutableIssue
+import com.atlassian.jira.user.util.UserUtil
+import com.atlassian.jira.event.type.EventDispatchOption
+import com.atlassian.crowd.embedded.api.User
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.customfields.manager.OptionsManager
+import com.atlassian.jira.web.bean.PagerFilter
+import com.atlassian.jira.issue.IssueInputParameters
+import com.atlassian.jira.bc.issue.IssueService
+import com.atlassian.jira.event.type.EventDispatchOption
+//import com.atlassian.jira.ComponentManager
+
+import com.atlassian.jira.project.ProjectManager
+
+import com.atlassian.jira.issue.IssueManager
+import com.atlassian.jira.issue.customfields.manager.OptionsManager
+import com.atlassian.jira.issue.index.IndexException
+import com.atlassian.jira.user.ApplicationUser
+import com.atlassian.jira.issue.link.IssueLink;
+import com.atlassian.jira.bc.issue.IssueService.UpdateValidationResult
+import com.atlassian.jira.bc.issue.IssueService.IssueResult
+import com.atlassian.jira.bc.issue.IssueService.CreateValidationResult
+import com.atlassian.jira.bc.issue.IssueService;
+import com.atlassian.jira.component.ComponentAccessor;
+import com.atlassian.jira.issue.IssueInputParameters
+import com.atlassian.jira.user.ApplicationUser;
+import com.atlassian.jira.issue.link.IssueLinkManager;
+import com.atlassian.jira.security.JiraAuthenticationContext;
+import groovy.transform.Field;
+import com.atlassian.jira.issue.customfields.manager.OptionsManager
+
+//All components
+@Field IssueService issueService = ComponentAccessor.issueService
+@Field IssueLinkManager issueLinkManager = ComponentAccessor.getIssueLinkManager()
+@Field IssueInputParameters issueParameters = issueService.newIssueInputParameters()
+@Field JiraAuthenticationContext authCtx = ComponentAccessor.getJiraAuthenticationContext()
+
+//projects id
+@Field Long myProject = 16100
+
+//issuetypes id
+@Field String story = 11901
+//10003 
+//11901
+
+@Field ApplicationUser currentUser = authCtx.getLoggedInUser()
+
+//def issueLinkManager = ComponentAccessor.getIssueLinkManager()
+
+def cfSelect = ComponentAccessor.customFieldManager.getCustomFieldObject("customfield_13709")
+def cf1Select = ComponentAccessor.customFieldManager.getCustomFieldObject("customfield_11901").getName();
+
+def cfConfig = cfSelect.getRelevantConfig(issue)
+def issueManager = ComponentAccessor.getIssueManager();
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager();
+def customField = ComponentAccessor.getCustomFieldManager()
+
+//def issue = issueManager.getIssueObject("DIEO-5221");
+
+def issueKey = issue.key; //get issue key
+def optionsManager = ComponentAccessor.getComponent(OptionsManager)
+//log.warn (issueKey);
+def c1 = "", p1 = "";
+
+def relation_link = "Deployment"
+
+def parent_issue_status = "FAT Signed-off"
+
+def parent_issue_type = "Story"
+def parent_issue_type_defect = "Defect"
+def parent_issue_type_epic = "Epic"
+def parent_issue_type_deploy_story = "Deployment Story"
+def c2_suffic= "DEPLOY TO ACC "
+
+def c1_suffic= "DEPLOY TO TST "
+
+def c1_issue_status = "INSTALLED"
+def c2_issue_status = "ASSIGNED FOR INSTALLATION"
+def c3_issue_status = "POST INSTALL SETUP"
+
+def c1_issue_type = "Deployment to Uncontrolled Environment"
+def c2_issue_type = "Deployment to Controlled Environment"
+
+
+def customFieldBackPorting = ComponentAccessor.getCustomFieldManager().getCustomFieldObject("customfield_16000")//Bacporting field
+def deployedApp = customFieldManager.getCustomFieldObject("customfield_14900"); //Deployment Application
+def changeCategory = customFieldManager.getCustomFieldObject("customfield_13708");//Change Category
+def preReq=  customFieldManager.getCustomFieldObject("customfield_15803");//Pre-req (CH/Jira ID)
+def cField1 = customFieldManager.getCustomFieldObject("customfield_13710");//Installtion Date &Time
+def cField2 = customFieldManager.getCustomFieldObject("customfield_13711");//Installation Duration
+def deployedCheckBox = customFieldManager.getCustomFieldObject("customfield_14404");//Deployment Checkbox
+def C1EnvObj = customFieldManager.getCustomFieldObject("customfield_13709");//Deployment Env
+def fatSignOff = customFieldManager.getCustomFieldObject("customfield_14401");//Sign-off Checkbox
+def result = true 
+
+def issue_summary = issue.summary
+
+def destId
+def SEDIssue
+ ArrayList<String> list = new ArrayList<String>();
+def username = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+
+
+def createIssue(Long project, String issuetype, String summary, String description, ApplicationUser assignee, String env,String pChangeCategory, String C1deployedApp, String preReqJira) {
+    try {
+        def cfSelect = ComponentAccessor.customFieldManager.getCustomFieldObject("customfield_13709")
+
+def preReq=  customFieldManager.getCustomFieldObject("customfield_15803");//Pre-req (CH/Jira ID)
+
+
+     def cfSelect1 = ComponentAccessor.customFieldManager.getCustomFieldObject("customfield_13708")//Change Category
+     def cfSelect2 = ComponentAccessor.customFieldManager.getCustomFieldObject("customfield_14900")//Application Name
+       issueParameters.setProjectId(project)
+        issueParameters.setIssueTypeId(issuetype)
+        
+        issueParameters.setSummary(summary)
+        def optionsManager = ComponentAccessor.getComponent(OptionsManager)
+        def cfConfig = cfSelect.getRelevantConfig(issue)
+         def cfConfig1 = cfSelect1.getRelevantConfig(issue)
+          def cfConfig2 = cfSelect2.getRelevantConfig(issue)
+        def value = optionsManager.getOptions(cfConfig)?.find {
+             it.toString() == env}
+             log.warn("VALUE"+value)
+         def changeValue = optionsManager.getOptions(cfConfig1)?.find {
+             it.toString() == pChangeCategory} 
+             log.warn("CHANGE VALUE"+ changeValue) 
+
+         def appName = optionsManager.getOptions(cfConfig2)?.find {
+             it.toString() == C1deployedApp} 
+             log.warn("APPNAME" +appName)  
+             log.warn("REQUSITE"+preReqJira)  
+        
+        issueParameters.addCustomFieldValue(13709, value.optionId.toString())
+        issueParameters.addCustomFieldValue(13708, changeValue.optionId.toString())
+        issueParameters.addCustomFieldValue(14900, appName.optionId.toString())
+         issueParameters.addCustomFieldValue(15803, preReqJira.toString())
+          issueParameters.setReporterId(currentUser.getName())
+       /* if (assignee != null) {
+            issueParameters.setAssigneeId(assignee.emailAddress)
+        }*/
+        
+
+        IssueService.CreateValidationResult createValidationResult = issueService.validateCreate(currentUser, issueParameters)
+
+        if (createValidationResult.isValid()) {
+            log.warn("IF LOOP")
+            IssueService.IssueResult createResult = issueService.create(currentUser, createValidationResult)
+
+            if (!createResult.isValid()) {
+                 log.warn(" INNER IF LOOP")
+                log.error(createResult.getErrorCollection().toString())
+            } else {
+                 log.warn("INNER ELSE LOOP")
+                log.error(createResult.getIssue())
+
+                //example to create link between current issue to the new created issue
+               issueLinkManager.createIssueLink( createResult.getIssue().getId(),issue.getId(), 10800, 1, currentUser)
+            }
+        } else {
+             log.warn("ELSE LOOP")
+            log.error(createValidationResult.getErrorCollection().toString())
+        }
+    } catch (e) {
+        log.error(e.toString())
+    }
+}
+
+
+
+log.warn("USERNAME"+username)
+log.warn("ISSUE ID"+issue.id)
+//Parento to Child-Inward link 
+//Child to Parent-Outward link 
+
+int i=0;
+//this array list will fetch all the linked child issue (i.e deployment relation link type )from parent issue
+// ArrayList<String> list = new ArrayList<String>();
+
+
+List allOutIssueLink1 = issueLinkManager.getInwardLinks(issue.id);
+
+log.warn("NO OF or TOTAL LINKED ISSUES OF PARENT"+allOutIssueLink1.size())
+//iterates through all the linked issues of parent
+for (Iterator outIterator1 = allOutIssueLink1.iterator(); outIterator1.hasNext();i++) {
+
+IssueLink issueLink1 = (IssueLink) outIterator1.next();
+def linkedIssue = issueLink1.getDestinationObject();
+    log.warn("PARENT ISSUE "+issueLink1.getDestinationObject())//Parent Issue
+
+// checks if the relation link is deployed or not, as we dont want the parent issue should check the causes realtion link  which holds security issues.
+
+if ( issueLink1.issueLinkType.name.contains(relation_link)) {
+ p1 = linkedIssue; // parent issue
+   destId=issueLink1.getDestinationId()//parent issue id 
+   log.warn("DEST ID SIZE"+p1.getIssueType().getName())
+    log.warn("Parent Issue "+p1)  
+     
+    log.warn("Parent Issue ID"+destId)
+
+log.warn("ISUE TYPE NAME DS"+p1.getIssueType().getName()) 
+if(p1.getIssueType().getName() == "Deployment Story"){
+    p2=p1 //issue of Deployment Story we are storing in varaible p2
+log.warn("DEPLOY STORY ISSUE NO:"+p2)
+def linkedIssue1 = issueLink1.getSourceObject();//fetches linked child issues of parent issue
+log.warn("CHILD ISSUE ID " + linkedIssue1);
+    
+if ( issueLink1.issueLinkType.name.contains(relation_link)) {
+
+log.warn(issueLink1.issueLinkType.name)
+ log.warn("LINKED ISSUE TYPE NAME" + linkedIssue1); 
+     // all the child issues will be stored in the array list 
+    list.add(linkedIssue1)
+  
+  log.warn ("CHILD ISSUE "+ list.get(i))
+}
+    
+}
+}
+ 
+ 
+   
+}
+log.warn("LIST SIZE"+list.size())         
+
+def k
+def prodIssue
+for (k=0; k<list.size();k++){
+	def prodissue= issueManager.getIssueObject(list.get(k).toString())
+    //To fetch only the prod issue
+	if(prodissue.getCustomFieldValue(C1EnvObj).toString() == "PROD"){
+	prodIssue= issueManager.getIssueObject(list.get(k).toString())
+	log.warn("IN PROD LOOP"+ prodIssue.getCustomFieldValue(C1EnvObj).toString())
+	}
+}
+ def radio = p1.getCustomFieldValue(customFieldBackPorting)
+def selected = radio.getValue() as String
+//if backporting checkbox is Yes then it should allow transition without validating
+
+log.warn("VALUE"+ selected)
+
+def j
+// the above array list which has all the linked child issues will be iteration to validate the fields as per our project requirement
+for (j=0; j<list.size();j++){
+def tst2 = issueManager.getIssueObject(list.get(j).toString());// this will fetch the linked child issues from the array list which is passed as parametr to the getIssueObject() method 
+
+ //log.warn("CHILD ISSUE TYPE"+tst2.getIssueType().getName()) //print the child issue type 
+   // log.warn ("CHILD ISSUE DEPLOYMENT ENV NAME "+tst2.getCustomFieldValue(C1EnvObj).toString()) //print the child deployement env value i.e TST or ACC
+    //log.warn("TRUE OR FALSE11"+ tst2.getIssueType().getName() == "Deployment to Controlled Environment")
+ 
+def pChangeCategory = p1.getCustomFieldValue(changeCategory).toString()
+log.warn("pChangeCategory" +pChangeCategory)
+def C1deployedApp = p1.getCustomFieldValue(deployedApp).toString()// deployemnt application name custom field value of child issue  is stored 
+    log.warn("DEPLOYMENT APPLCATION NAME"+C1deployedApp)
+
+    def preReqJira = p1.getCustomFieldValue(preReq).toString()
+    log.warn("PRE_REQ" +preReqJira )
+    log.warn("SUMMARY"+p1.getSummary())
+    def summaryTST2 =p1.getSummary()+' - DEPLOY TO TST2 ' 
+        def summarySUP =p1.getSummary()+' - DEPLOY TO SUP ' 
+        def summaryACC =p1.getSummary()+' - DEPLOY TO ACC '
+        def summaryTST =p1.getSummary()+' - DEPLOY TO TST '
+  
+   // def prodIssue= issueManager.getIssueObject(list.get(0).toString());
+    def accSupIssue=issueManager.getIssueObject(list.get(1).toString())
+   def tstTst2Issue=issueManager.getIssueObject(list.get(list.size()-1).toString())
+     log.warn("LINKED ISSUE ENv"+prodIssue.getCustomFieldValue(C1EnvObj).toString())
+    log.warn("LINKED ISSUE STATUS"+prodIssue.getStatus().getName())
+    if(selected == "Yes")
+   {
+    if (prodIssue.getCustomFieldValue(C1EnvObj).toString() == "PROD" && prodIssue.getStatus().getName() == c1_issue_status || prodIssue.getStatus().getName() == c2_issue_status || prodIssue.getStatus().getName() == c3_issue_status)
+    { 
+    // checks whether the env is TST or not, if the env is other  TST,DEV or TST2 then transition ends up with error
+   
+    if(tst2.getIssueType().getName() == "Deployment to Controlled Environment" || tst2.getIssueType().getName() == "Deployment to Uncontrolled Environment"){
+	
+        log.warn("IN IF LOOP")
+		if(C1deployedApp == "BPM" || C1deployedApp == "DPA" || C1deployedApp == "Informatica ICC"){
+ 
+        log.warn("INNER IF LOOP")
+        
+       
+        log.warn("ENV NAME"+ tst2.getCustomFieldValue(C1EnvObj).toString())
+       
+      //checks the ACC issue env , it should be either ACC or SUP  
+     if (tst2.getCustomFieldValue(C1EnvObj).toString() == "TST")
+	 { log.warn("HELLO TST")
+	         createIssue(myProject, story, summaryTST2, "My New issue Description", currentUser, "TST2", pChangeCategory, C1deployedApp, preReqJira )
+             log.warn("3rd Validation"+accSupIssue.getCustomFieldValue(C1EnvObj).toString())
+             if(accSupIssue.getCustomFieldValue(C1EnvObj).toString() != "SUP" && accSupIssue.getCustomFieldValue(C1EnvObj).toString() != "ACC"){
+               createIssue(myProject, story, summaryACC, "My New issue Description", currentUser, "ACC", pChangeCategory, C1deployedApp, preReqJira ) 
+               createIssue(myProject, story, summarySUP, "My New issue Description", currentUser, "SUP", pChangeCategory, C1deployedApp, preReqJira )
+             }         
+      } 
+
+     
+
+  if (tst2.getCustomFieldValue(C1EnvObj).toString() == "TST2")
+	 { log.warn("HELLO TST2")
+	   createIssue(myProject, story, summaryTST, "My New issue Description", currentUser, "TST", pChangeCategory, C1deployedApp, preReqJira )
+      } 
+
+     
+       
+    if (tst2.getCustomFieldValue(C1EnvObj).toString() == "ACC")
+	 {  log.warn("HELLO ACC")
+        createIssue(myProject, story, summarySUP, "My New issue Description", currentUser, "SUP", pChangeCategory, C1deployedApp, preReqJira )
+
+        if(accSupIssue.getCustomFieldValue(C1EnvObj).toString() != "TST" && accSupIssue.getCustomFieldValue(C1EnvObj).toString() != "TST2" &&
+            tstTst2Issue.getCustomFieldValue(C1EnvObj).toString() != "TST" && tstTst2Issue.getCustomFieldValue(C1EnvObj).toString() != "TST2" ){
+          createIssue(myProject, story, summaryTST, "My New issue Description", currentUser, "TST", pChangeCategory, C1deployedApp, preReqJira )  
+           createIssue(myProject, story, summaryTST2, "My New issue Description", currentUser, "TST2", pChangeCategory, C1deployedApp, preReqJira )
+        }
+     }
+
+   
+
+    if (tst2.getCustomFieldValue(C1EnvObj).toString() == "SUP")
+	 { log.warn("HELLO SUP")
+       createIssue(myProject, story, summaryACC, "My New issue Description", currentUser, "ACC", pChangeCategory, C1deployedApp, preReqJira )
+      } 
+     	  
+
+    
+ }      
+    } 
+   }
+    else{
+         return false
+     } 
+   }
+ }
+	//return result
